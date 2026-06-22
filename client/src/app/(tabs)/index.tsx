@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, TextInput, Pressable, FlatList, ActivityIndicator, Modal, Alert, RefreshControl, Platform } from 'react-native';
+import { StyleSheet, TextInput, Pressable, ActivityIndicator, Modal, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { fetchWeather, WeatherData } from '@/services/weather';
@@ -17,6 +20,8 @@ interface Task {
   title: string;
   description: string;
   status: 'completed' | 'pending';
+  priority: 'low' | 'medium' | 'high';
+  order: number;
   createdDate: string;
 }
 
@@ -31,10 +36,13 @@ export default function HomeScreen() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   
-  // Add task state
   const [modalVisible, setModalVisible] = useState(false);
+  const [optionsModalVisible, setOptionsModalVisible] = useState(false);
+  const [selectedOptionsTask, setSelectedOptionsTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDescription, setNewTaskDescription] = useState('');
+  const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   
   // Weather state
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -90,7 +98,7 @@ export default function HomeScreen() {
 
   // Mutations
   const createTaskMutation = useMutation({
-    mutationFn: async (payload: { title: string; description: string }) => {
+    mutationFn: async (payload: { title: string; description: string; priority: string }) => {
       const response = await api.post('/tasks', payload);
       return response.data;
     },
@@ -99,6 +107,7 @@ export default function HomeScreen() {
       setModalVisible(false);
       setNewTaskTitle('');
       setNewTaskDescription('');
+      setNewTaskPriority('medium');
     },
     onError: (error: any) => {
       Alert.alert('Error', error.response?.data?.error || 'Failed to create task.');
@@ -106,13 +115,18 @@ export default function HomeScreen() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: async (payload: { id: string; status?: 'completed' | 'pending'; title?: string; description?: string }) => {
+    mutationFn: async (payload: { id: string; status?: 'completed' | 'pending'; title?: string; description?: string; priority?: string }) => {
       const { id, ...data } = payload;
       const response = await api.put(`/tasks/${id}`, data);
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      setModalVisible(false);
+      setEditingTask(null);
+      setNewTaskTitle('');
+      setNewTaskDescription('');
+      setNewTaskPriority('medium');
     },
     onError: (error: any) => {
       Alert.alert('Error', error.response?.data?.error || 'Failed to update task.');
@@ -133,15 +147,52 @@ export default function HomeScreen() {
     },
   });
 
-  const handleCreateTask = () => {
+  const reorderTasksMutation = useMutation({
+    mutationFn: async (payload: { id: string; order: number }[]) => {
+      const response = await api.put('/tasks/reorder', payload);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+    onError: (error: any) => {
+      Alert.alert('Error', error.response?.data?.error || 'Failed to reorder tasks.');
+    },
+  });
+
+  const handleDragEnd = ({ data }: { data: Task[] }) => {
+    queryClient.setQueryData(['tasks', filter, search], data);
+    const reorderPayload = data.map((item, index) => ({
+      id: item._id,
+      order: index,
+    }));
+    reorderTasksMutation.mutate(reorderPayload);
+  };
+
+  const handleSaveTask = () => {
     if (!newTaskTitle.trim()) {
       Alert.alert('Validation Error', 'Task title is required.');
       return;
     }
-    createTaskMutation.mutate({
-      title: newTaskTitle.trim(),
-      description: newTaskDescription.trim(),
-    });
+    if (editingTask) {
+      updateTaskMutation.mutate({
+        id: editingTask._id,
+        title: newTaskTitle.trim(),
+        description: newTaskDescription.trim(),
+        priority: newTaskPriority,
+      });
+    } else {
+      createTaskMutation.mutate({
+        title: newTaskTitle.trim(),
+        description: newTaskDescription.trim(),
+        priority: newTaskPriority,
+      });
+    }
+  };
+
+  const handleOpenOptions = (task: Task) => {
+    setSelectedOptionsTask(task);
+    setOptionsModalVisible(true);
   };
 
   const handleToggleStatus = (task: Task) => {
@@ -159,12 +210,27 @@ export default function HomeScreen() {
     ]);
   };
 
-  const renderTaskItem = ({ item }: { item: Task }) => {
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return '#ef4444';
+      case 'medium': return '#f59e0b';
+      case 'low': return '#3b82f6';
+      default: return '#9ca3af';
+    }
+  };
+
+  const renderTaskItem = ({ item, drag, isActive }: RenderItemParams<Task>) => {
     const isCompleted = item.status === 'completed';
     return (
       <Pressable 
+        onLongPress={drag}
+        disabled={isActive}
         onPress={() => setSelectedTask(selectedTask?._id === item._id ? null : item)}
-        style={[styles.taskItem, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}
+        style={[
+          styles.taskItem, 
+          { backgroundColor: isActive ? theme.backgroundSelected : theme.backgroundElement, borderColor: theme.backgroundSelected },
+          isActive && { transform: [{ scale: 1.02 }], elevation: 5, zIndex: 99 }
+        ]}
       >
         <ThemedView style={styles.taskRow}>
           <Pressable 
@@ -178,19 +244,25 @@ export default function HomeScreen() {
             {isCompleted && <ThemedView style={[styles.checkboxInner, { backgroundColor: theme.background }]} />}
           </Pressable>
           
-          <ThemedText 
-            style={[
-              styles.taskTitle, 
-              isCompleted && { textDecorationLine: 'line-through', opacity: 0.6 }
-            ]}
-          >
-            {item.title}
-          </ThemedText>
-          
-          <Pressable onPress={() => handleDeleteTask(item._id)} style={styles.deleteButton}>
-            <ThemedText style={{ color: '#ef4444' }} type="smallBold">
-              Delete
+          <ThemedView style={{ flex: 1, backgroundColor: 'transparent' }}>
+            <ThemedText 
+              style={[
+                styles.taskTitle, 
+                isCompleted && { textDecorationLine: 'line-through', opacity: 0.6 }
+              ]}
+            >
+              {item.title}
             </ThemedText>
+            
+            <ThemedView style={[styles.priorityBadge, { borderColor: getPriorityColor(item.priority) }]}>
+              <ThemedText type="smallBold" style={{ color: getPriorityColor(item.priority), fontSize: 10 }}>
+                {item.priority?.toUpperCase() || 'MEDIUM'}
+              </ThemedText>
+            </ThemedView>
+          </ThemedView>
+          
+          <Pressable onPress={() => handleOpenOptions(item)} style={styles.deleteButton} hitSlop={10}>
+            <Ionicons name="ellipsis-vertical" size={20} color={theme.textSecondary} />
           </Pressable>
         </ThemedView>
 
@@ -209,8 +281,9 @@ export default function HomeScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemedView style={styles.container}>
+        <SafeAreaView style={styles.safeArea}>
         
         {/* Header Section */}
         <ThemedView style={styles.header}>
@@ -264,14 +337,14 @@ export default function HomeScreen() {
         {isLoading && !isRefetching ? (
           <ActivityIndicator size="large" style={{ marginTop: Spacing.four }} />
         ) : (
-          <FlatList
+          <DraggableFlatList
             data={tasks}
             renderItem={renderTaskItem}
             keyExtractor={(item) => item._id}
+            onDragEnd={handleDragEnd}
+            containerStyle={{ flex: 1 }}
+            style={{ flex: 1 }}
             contentContainerStyle={styles.listContainer}
-            refreshControl={
-              <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
-            }
             ListEmptyComponent={
               <ThemedView style={styles.emptyState}>
                 <ThemedText themeColor="textSecondary">No tasks found</ThemedText>
@@ -295,12 +368,18 @@ export default function HomeScreen() {
           animationType="slide"
           transparent={true}
           visible={modalVisible}
-          onRequestClose={() => setModalVisible(false)}
+          onRequestClose={() => {
+            setModalVisible(false);
+            setEditingTask(null);
+            setNewTaskTitle('');
+            setNewTaskDescription('');
+            setNewTaskPriority('medium');
+          }}
         >
           <ThemedView style={styles.modalOverlay}>
             <ThemedView style={[styles.modalCard, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}>
               <ThemedText type="smallBold" style={styles.modalTitle}>
-                New Task
+                {editingTask ? 'Edit Task' : 'New Task'}
               </ThemedText>
 
               <TextInput
@@ -321,20 +400,53 @@ export default function HomeScreen() {
                 numberOfLines={3}
               />
 
+              <ThemedView style={styles.prioritySelector}>
+                <ThemedText type="smallBold" style={{ marginBottom: Spacing.two }}>Priority</ThemedText>
+                <ThemedView style={styles.priorityButtons}>
+                  {(['low', 'medium', 'high'] as const).map(p => (
+                    <Pressable
+                      key={p}
+                      onPress={() => setNewTaskPriority(p)}
+                      style={[
+                        styles.priorityButton,
+                        { borderColor: theme.backgroundSelected },
+                        newTaskPriority === p && { backgroundColor: theme.text }
+                      ]}
+                    >
+                      <ThemedText 
+                        type="small" 
+                        style={[
+                          { textTransform: 'capitalize' },
+                          newTaskPriority === p && { color: theme.background }
+                        ]}
+                      >
+                        {p}
+                      </ThemedText>
+                    </Pressable>
+                  ))}
+                </ThemedView>
+              </ThemedView>
+
               <ThemedView style={styles.modalButtons}>
                 <Pressable
-                  onPress={() => setModalVisible(false)}
+                  onPress={() => {
+                    setModalVisible(false);
+                    setEditingTask(null);
+                    setNewTaskTitle('');
+                    setNewTaskDescription('');
+                    setNewTaskPriority('medium');
+                  }}
                   style={[styles.modalButton, { borderColor: theme.backgroundSelected }]}
                 >
                   <ThemedText type="small">Cancel</ThemedText>
                 </Pressable>
                 
                 <Pressable
-                  onPress={handleCreateTask}
-                  disabled={createTaskMutation.isPending}
+                  onPress={handleSaveTask}
+                  disabled={createTaskMutation.isPending || updateTaskMutation.isPending}
                   style={[styles.modalButton, { backgroundColor: theme.text }]}
                 >
-                  {createTaskMutation.isPending ? (
+                  {createTaskMutation.isPending || updateTaskMutation.isPending ? (
                     <ActivityIndicator color={theme.background} />
                   ) : (
                     <ThemedText type="smallBold" style={{ color: theme.background }}>
@@ -347,21 +459,80 @@ export default function HomeScreen() {
           </ThemedView>
         </Modal>
 
-      </SafeAreaView>
-    </ThemedView>
+        {/* Task Options Modal */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={optionsModalVisible}
+          onRequestClose={() => setOptionsModalVisible(false)}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setOptionsModalVisible(false)}>
+            <Pressable style={[styles.optionsCard, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}>
+              <ThemedText type="subtitle" style={styles.optionsTitle}>
+                Task Options
+              </ThemedText>
+              <ThemedView style={styles.optionsList}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.optionButton,
+                    pressed && { backgroundColor: theme.backgroundSelected }
+                  ]}
+                onPress={() => {
+                  setOptionsModalVisible(false);
+                  if (selectedOptionsTask) {
+                    setEditingTask(selectedOptionsTask);
+                    setNewTaskTitle(selectedOptionsTask.title);
+                    setNewTaskDescription(selectedOptionsTask.description || '');
+                    setNewTaskPriority(selectedOptionsTask.priority);
+                    setModalVisible(true);
+                  }
+                }}
+              >
+                <ThemedView style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}>
+                  <Ionicons name="pencil" size={20} color={theme.text} style={styles.optionIcon} />
+                  <ThemedText type="smallBold">Edit Task</ThemedText>
+                </ThemedView>
+                </Pressable>
+
+                <ThemedView style={{ height: 1, backgroundColor: theme.backgroundSelected, marginVertical: Spacing.three }} />
+
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.optionButton,
+                    pressed && { backgroundColor: theme.backgroundSelected }
+                  ]}
+                onPress={() => {
+                  setOptionsModalVisible(false);
+                  if (selectedOptionsTask) {
+                    handleDeleteTask(selectedOptionsTask._id);
+                  }
+                }}
+              >
+                <ThemedView style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' }}>
+                  <Ionicons name="trash" size={20} color="#ef4444" style={styles.optionIcon} />
+                  <ThemedText type="smallBold" style={{ color: '#ef4444' }}>Delete Task</ThemedText>
+                </ThemedView>
+                </Pressable>
+              </ThemedView>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        </SafeAreaView>
+      </ThemedView>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    alignItems: 'center',
   },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    paddingBottom: BottomTabInset + Spacing.three,
+    width: '100%',
+    paddingHorizontal: Spacing.three,
     maxWidth: MaxContentWidth,
   },
   header: {
@@ -501,5 +672,55 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
     borderWidth: 1,
     borderRadius: Spacing.two,
+  },
+  priorityBadge: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderRadius: Spacing.one,
+    paddingHorizontal: Spacing.one,
+    paddingVertical: 2,
+    marginTop: Spacing.one,
+    backgroundColor: 'transparent',
+  },
+  prioritySelector: {
+    marginBottom: Spacing.four,
+    backgroundColor: 'transparent',
+  },
+  priorityButtons: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    backgroundColor: 'transparent',
+  },
+  priorityButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: Spacing.two,
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+  },
+  optionsCard: {
+    borderWidth: 1,
+    borderRadius: Spacing.three,
+    width: '100%',
+    maxWidth: 300,
+    alignSelf: 'center',
+    overflow: 'hidden',
+  },
+  optionsTitle: {
+    padding: Spacing.four,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(150,150,150,0.1)',
+    textAlign: 'center',
+  },
+  optionsList: {
+    padding: Spacing.four,
+    backgroundColor: 'transparent',
+  },
+  optionButton: {
+    paddingVertical: Spacing.five,
+    paddingHorizontal: Spacing.four,
+  },
+  optionIcon: {
+    marginRight: Spacing.three,
   },
 });

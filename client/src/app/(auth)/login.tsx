@@ -3,6 +3,7 @@ import { StyleSheet, TextInput, TouchableOpacity, Pressable, ActivityIndicator, 
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as AuthSession from 'expo-auth-session';
 import { useAuth } from '@/context/AuthContext';
@@ -172,7 +173,10 @@ export default function LoginScreen() {
             {googleLoading ? (
               <ActivityIndicator color={theme.text} />
             ) : (
-              <ThemedText type="smallBold">Sign In with Google</ThemedText>
+              <ThemedView style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'transparent', gap: 10 }}>
+                <Ionicons name="logo-google" size={20} color={theme.text} />
+                <ThemedText type="smallBold">Sign In with Google</ThemedText>
+              </ThemedView>
             )}
           </Pressable>
 
@@ -248,7 +252,7 @@ const styles = StyleSheet.create({
   googleButton: {
     height: 48,
     borderWidth: 1,
-    borderRadius: Spacing.two,
+    borderRadius: Spacing.three,
     alignItems: 'center',
     justifyContent: 'center',
   },

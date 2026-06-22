@@ -10,13 +10,22 @@ const createTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').trim(),
   description: z.string().optional().default(''),
   status: z.enum(['completed', 'pending']).optional().default('pending'),
+  priority: z.enum(['low', 'medium', 'high']).optional().default('medium'),
 });
 
 const updateTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').optional(),
   description: z.string().optional(),
   status: z.enum(['completed', 'pending']).optional(),
+  priority: z.enum(['low', 'medium', 'high']).optional(),
 });
+
+const reorderSchema = z.array(
+  z.object({
+    id: z.string(),
+    order: z.number(),
+  })
+);
 
 // All task routes are authenticated
 router.use(authenticateToken);
@@ -41,7 +50,7 @@ router.get('/', async (req: AuthRequest, res: Response, next: NextFunction): Pro
       query.title = { $regex: search.trim(), $options: 'i' };
     }
 
-    const tasks = await Task.find(query).sort({ createdDate: -1 });
+    const tasks = await Task.find(query).sort({ order: 1, createdDate: -1 });
     res.status(200).json(tasks);
   } catch (error) {
     next(error);
@@ -57,12 +66,17 @@ router.post('/', async (req: AuthRequest, res: Response, next: NextFunction): Pr
       return;
     }
 
-    const { title, description, status } = parseResult.data;
+    const { title, description, status, priority } = parseResult.data;
+
+    const maxOrderTask = await Task.findOne({ userId: req.userId }).sort('-order');
+    const order = maxOrderTask ? maxOrderTask.order + 1 : 0;
 
     const newTask = await Task.create({
       title,
       description,
       status,
+      priority,
+      order,
       userId: req.userId,
     });
 
@@ -72,7 +86,33 @@ router.post('/', async (req: AuthRequest, res: Response, next: NextFunction): Pr
   }
 });
 
-// 3. PUT /api/tasks/:id - Update an existing task
+// 3. PUT /api/tasks/reorder - Bulk reorder tasks
+router.put('/reorder', async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const parseResult = reorderSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      res.status(400).json({ error: 'Invalid reorder payload.' });
+      return;
+    }
+
+    const updates = parseResult.data.map(item => ({
+      updateOne: {
+        filter: { _id: item.id, userId: req.userId },
+        update: { $set: { order: item.order } }
+      }
+    }));
+
+    if (updates.length > 0) {
+      await Task.bulkWrite(updates);
+    }
+
+    res.status(200).json({ message: 'Tasks reordered successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 4. PUT /api/tasks/:id - Update an existing task
 router.put('/:id', async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const parseResult = updateTaskSchema.safeParse(req.body);
@@ -101,7 +141,7 @@ router.put('/:id', async (req: AuthRequest, res: Response, next: NextFunction): 
   }
 });
 
-// 4. DELETE /api/tasks/:id - Delete a task
+// 5. DELETE /api/tasks/:id - Delete a task
 router.delete('/:id', async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;

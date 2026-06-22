@@ -1,5 +1,9 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import { useColorScheme, ActivityIndicator, StyleSheet } from 'react-native';
+import { useColorScheme, ActivityIndicator, StyleSheet, LogBox } from 'react-native';
+
+LogBox.ignoreLogs([
+  'InteractionManager has been deprecated',
+]);
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';

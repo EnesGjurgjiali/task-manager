@@ -1,0 +1,122 @@
+import { Router, Response, NextFunction } from 'express';
+import { z } from 'zod';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { Task } from '../models/Task';
+
+const router = Router();
+
+// Zod schemas for task inputs
+const createTaskSchema = z.object({
+  title: z.string().min(1, 'Title is required').trim(),
+  description: z.string().optional().default(''),
+  status: z.enum(['completed', 'pending']).optional().default('pending'),
+});
+
+const updateTaskSchema = z.object({
+  title: z.string().min(1, 'Title is required').optional(),
+  description: z.string().optional(),
+  status: z.enum(['completed', 'pending']).optional(),
+});
+
+// All task routes are authenticated
+router.use(authenticateToken);
+
+interface TaskQuery {
+  userId?: string;
+  status?: 'completed' | 'pending';
+  title?: { $regex: string; $options: string };
+}
+
+// 1. GET /api/tasks - Retrieve user's tasks with search and status filtering
+router.get('/', async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { search, status } = req.query;
+    const query: TaskQuery = { userId: req.userId };
+
+    if (status && (status === 'completed' || status === 'pending')) {
+      query.status = status;
+    }
+
+    if (search && typeof search === 'string' && search.trim() !== '') {
+      query.title = { $regex: search.trim(), $options: 'i' };
+    }
+
+    const tasks = await Task.find(query).sort({ createdDate: -1 });
+    res.status(200).json(tasks);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 2. POST /api/tasks - Create a new task
+router.post('/', async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const parseResult = createTaskSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      res.status(400).json({ error: parseResult.error.issues[0].message });
+      return;
+    }
+
+    const { title, description, status } = parseResult.data;
+
+    const newTask = await Task.create({
+      title,
+      description,
+      status,
+      userId: req.userId,
+    });
+
+    res.status(201).json(newTask);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 3. PUT /api/tasks/:id - Update an existing task
+router.put('/:id', async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const parseResult = updateTaskSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      res.status(400).json({ error: parseResult.error.issues[0].message });
+      return;
+    }
+
+    const { id } = req.params;
+    const updateData = parseResult.data;
+
+    const task = await Task.findOneAndUpdate(
+      { _id: id, userId: req.userId },
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    if (!task) {
+      res.status(404).json({ error: 'Task not found.' });
+      return;
+    }
+
+    res.status(200).json(task);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 4. DELETE /api/tasks/:id - Delete a task
+router.delete('/:id', async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const result = await Task.findOneAndDelete({ _id: id, userId: req.userId });
+
+    if (!result) {
+      res.status(404).json({ error: 'Task not found.' });
+      return;
+    }
+
+    res.status(200).json({ message: 'Task deleted successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+export default router;

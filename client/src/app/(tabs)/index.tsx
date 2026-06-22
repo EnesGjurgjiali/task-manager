@@ -4,9 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { fetchWeather, getWeatherCondition, WeatherData } from '../../services/weather';
+import { fetchWeather, WeatherData } from '../../services/weather';
 import { ThemedText } from '../../components/themed-text';
 import { ThemedView } from '../../components/themed-view';
+import { WeatherWidget } from '../../components/weather-widget';
 import { Colors, Spacing, BottomTabInset, MaxContentWidth } from '../../constants/theme';
 import { useTheme } from '../../hooks/use-theme';
 import { storage } from '../../services/storage';
@@ -220,20 +221,7 @@ export default function HomeScreen() {
         </ThemedView>
 
         {/* Weather Widget */}
-        <ThemedView style={[styles.weatherWidget, { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected }]}>
-          {weatherLoading ? (
-            <ActivityIndicator size="small" />
-          ) : weather ? (
-            <ThemedView style={styles.weatherInfo}>
-              <ThemedText type="smallBold">Prishtina Weather</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {weather.temperature}°C - {getWeatherCondition(weather.weathercode)}
-              </ThemedText>
-            </ThemedView>
-          ) : (
-            <ThemedText type="small" themeColor="textSecondary">Weather forecast unavailable</ThemedText>
-          )}
-        </ThemedView>
+        <WeatherWidget weather={weather} loading={weatherLoading} />
 
         {/* Search Bar */}
         <TextInput
@@ -387,17 +375,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     borderWidth: 1,
     borderRadius: Spacing.two,
-  },
-  weatherWidget: {
-    padding: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    marginBottom: Spacing.three,
-    alignItems: 'center',
-  },
-  weatherInfo: {
-    alignItems: 'center',
-    backgroundColor: 'transparent',
   },
   searchInput: {
     height: 48,

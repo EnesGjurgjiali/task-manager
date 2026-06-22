@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 export interface WeatherData {
   temperature: number;
   windspeed: number;
@@ -8,14 +6,21 @@ export interface WeatherData {
 
 export const fetchWeather = async (latitude: number = 42.6629, longitude: number = 21.1655): Promise<WeatherData> => {
   try {
-    const response = await axios.get(
+    const response = await fetch(
       `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`
     );
-    if (response.data && response.data.current_weather) {
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data && data.current_weather) {
       return {
-        temperature: response.data.current_weather.temperature,
-        windspeed: response.data.current_weather.windspeed,
-        weathercode: response.data.current_weather.weathercode,
+        temperature: data.current_weather.temperature,
+        windspeed: data.current_weather.windspeed,
+        weathercode: data.current_weather.weathercode,
       };
     }
     throw new Error('Invalid weather data structure returned.');

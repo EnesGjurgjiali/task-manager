@@ -5,11 +5,11 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import Constants from 'expo-constants';
 import * as AuthSession from 'expo-auth-session';
-import { useAuth } from '../../context/AuthContext';
-import { ThemedText } from '../../components/themed-text';
-import { ThemedView } from '../../components/themed-view';
-import { Spacing } from '../../constants/theme';
-import { useTheme } from '../../hooks/use-theme';
+import { useAuth } from '@/context/AuthContext';
+import { ThemedText } from '@/components/ui/themed-text';
+import { ThemedView } from '@/components/ui/themed-view';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 WebBrowser.maybeCompleteAuthSession();
 

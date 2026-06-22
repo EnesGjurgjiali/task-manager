@@ -3,8 +3,8 @@ import { useColorScheme, ActivityIndicator, StyleSheet } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
-import { AuthProvider, useAuth } from '../context/AuthContext';
-import { ThemedView } from '../components/themed-view';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { ThemedView } from '@/components/ui/themed-view';
 
 const queryClient = new QueryClient();
 

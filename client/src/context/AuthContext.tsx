@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api } from '../services/api';
-import { storage } from '../services/storage';
+import { api } from '@/services/api';
+import { storage } from '@/services/storage';
 
 export interface User {
   id: string;

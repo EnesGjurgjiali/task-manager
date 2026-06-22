@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { StyleSheet, TextInput, Pressable, FlatList, ActivityIndicator, Modal, Alert, RefreshControl, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
-import { fetchWeather, WeatherData } from '../../services/weather';
-import { ThemedText } from '../../components/themed-text';
-import { ThemedView } from '../../components/themed-view';
-import { WeatherWidget } from '../../components/weather-widget';
-import { Colors, Spacing, BottomTabInset, MaxContentWidth } from '../../constants/theme';
-import { useTheme } from '../../hooks/use-theme';
-import { storage } from '../../services/storage';
+import { api } from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
+import { fetchWeather, WeatherData } from '@/services/weather';
+import { ThemedText } from '@/components/ui/themed-text';
+import { ThemedView } from '@/components/ui/themed-view';
+import { WeatherWidget } from '@/components/widgets/weather-widget';
+import { Spacing, BottomTabInset, MaxContentWidth } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { storage } from '@/services/storage';
 
 interface Task {
   _id: string;

@@ -2,12 +2,12 @@ import React from 'react';
 import { StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
-import { ThemedText } from '../../components/themed-text';
-import { ThemedView } from '../../components/themed-view';
-import { Spacing, MaxContentWidth } from '../../constants/theme';
-import { useTheme } from '../../hooks/use-theme';
+import { api } from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
+import { ThemedText } from '@/components/ui/themed-text';
+import { ThemedView } from '@/components/ui/themed-view';
+import { Spacing, MaxContentWidth } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();

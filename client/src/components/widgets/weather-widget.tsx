@@ -2,9 +2,9 @@ import React from 'react';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from './themed-text';
-import { Spacing } from '../constants/theme';
-import { WeatherData, getWeatherCondition } from '../services/weather';
+import { ThemedText } from '@/components/ui/themed-text';
+import { Spacing } from '@/constants/theme';
+import { WeatherData, getWeatherCondition } from '@/services/weather';
 
 interface WeatherWidgetProps {
   weather: WeatherData | null;

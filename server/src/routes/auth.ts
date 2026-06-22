@@ -79,6 +79,7 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
         name: newUser.name,
         email: newUser.email,
         avatar: newUser.avatar,
+        createdAt: newUser.createdAt,
       },
     });
   } catch (error) {
@@ -120,6 +121,7 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction): P
         name: user.name,
         email: user.email,
         avatar: user.avatar,
+        createdAt: user.createdAt,
       },
     });
   } catch (error) {
@@ -221,6 +223,7 @@ router.post('/google', async (req: Request, res: Response, next: NextFunction): 
         name: user.name,
         email: user.email,
         avatar: user.avatar,
+        createdAt: user.createdAt,
       },
     });
   } catch (error) {

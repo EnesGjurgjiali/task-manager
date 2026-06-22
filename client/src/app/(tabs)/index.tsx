@@ -217,9 +217,6 @@ export default function HomeScreen() {
             <ThemedText type="small" themeColor="textSecondary">Welcome back,</ThemedText>
             <ThemedText type="smallBold">{user?.name}</ThemedText>
           </ThemedView>
-          <Pressable onPress={logout} style={[styles.logoutBtn, { borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundElement }]}>
-            <ThemedText type="small">Sign Out</ThemedText>
-          </Pressable>
         </ThemedView>
 
         {/* Weather Widget */}

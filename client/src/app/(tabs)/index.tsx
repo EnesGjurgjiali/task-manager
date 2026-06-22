@@ -5,6 +5,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+
 import { api } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { fetchWeather, WeatherData } from '@/services/weather';
@@ -15,6 +17,22 @@ import { Spacing, BottomTabInset, MaxContentWidth } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { storage } from '@/services/storage';
 
+let Notifications: any = null;
+try {
+  Notifications = require('expo-notifications');
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+} catch (e) {
+  // Silently ignore: expo-notifications is not supported in Expo Go
+}
+
 interface Task {
   _id: string;
   title: string;
@@ -23,6 +41,7 @@ interface Task {
   priority: 'low' | 'medium' | 'high';
   order: number;
   createdDate: string;
+  dueDate?: string;
 }
 
 const OFFLINE_TASKS_CACHE_KEY = 'offline_tasks_cache';
@@ -43,6 +62,8 @@ export default function HomeScreen() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDescription, setNewTaskDescription] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [newTaskDueDate, setNewTaskDueDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   
   // Weather state
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -61,6 +82,20 @@ export default function HomeScreen() {
       }
     };
     loadWeather();
+
+    // Request notification permissions if available
+    (async () => {
+      if (Notifications) {
+        try {
+          const { status } = await Notifications.requestPermissionsAsync();
+          if (status !== 'granted') {
+            console.warn('Notification permissions not granted');
+          }
+        } catch (e) {
+          console.warn('Could not request notification permissions', e);
+        }
+      }
+    })();
   }, []);
 
   // React Query - Fetch tasks from API
@@ -96,18 +131,40 @@ export default function HomeScreen() {
     },
   });
 
+  const scheduleReminder = async (taskData: Task) => {
+    if (!Notifications || !taskData.dueDate || taskData.status === 'completed') return;
+    const due = new Date(taskData.dueDate);
+    const reminderTime = new Date(due.getTime() - 5 * 60000); // 5 minutes before
+    
+    if (reminderTime > new Date()) {
+      try {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `Reminder: ${taskData.title}`,
+            body: 'This task is due in 5 minutes!',
+          },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes?.DATE || 'date', date: reminderTime },
+        });
+      } catch (e) {
+        console.warn('Could not schedule notification', e);
+      }
+    }
+  };
+
   // Mutations
   const createTaskMutation = useMutation({
-    mutationFn: async (payload: { title: string; description: string; priority: string }) => {
+    mutationFn: async (payload: { title: string; description: string; priority: string; dueDate?: string | null }) => {
       const response = await api.post('/tasks', payload);
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data: Task) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       setModalVisible(false);
       setNewTaskTitle('');
       setNewTaskDescription('');
       setNewTaskPriority('medium');
+      setNewTaskDueDate(null);
+      scheduleReminder(data);
     },
     onError: (error: any) => {
       Alert.alert('Error', error.response?.data?.error || 'Failed to create task.');
@@ -115,18 +172,20 @@ export default function HomeScreen() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: async (payload: { id: string; status?: 'completed' | 'pending'; title?: string; description?: string; priority?: string }) => {
+    mutationFn: async (payload: { id: string; status?: 'completed' | 'pending'; title?: string; description?: string; priority?: string; dueDate?: string | null }) => {
       const { id, ...data } = payload;
       const response = await api.put(`/tasks/${id}`, data);
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data: Task) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       setModalVisible(false);
       setEditingTask(null);
       setNewTaskTitle('');
       setNewTaskDescription('');
       setNewTaskPriority('medium');
+      setNewTaskDueDate(null);
+      scheduleReminder(data);
     },
     onError: (error: any) => {
       Alert.alert('Error', error.response?.data?.error || 'Failed to update task.');
@@ -180,18 +239,21 @@ export default function HomeScreen() {
         title: newTaskTitle.trim(),
         description: newTaskDescription.trim(),
         priority: newTaskPriority,
+        dueDate: newTaskDueDate ? newTaskDueDate.toISOString() : null,
       });
     } else {
       createTaskMutation.mutate({
         title: newTaskTitle.trim(),
         description: newTaskDescription.trim(),
         priority: newTaskPriority,
+        dueDate: newTaskDueDate ? newTaskDueDate.toISOString() : null,
       });
     }
   };
 
   const handleOpenOptions = (task: Task) => {
     setSelectedOptionsTask(task);
+    setNewTaskDueDate(task.dueDate ? new Date(task.dueDate) : null);
     setOptionsModalVisible(true);
   };
 
@@ -259,6 +321,25 @@ export default function HomeScreen() {
                 {item.priority?.toUpperCase() || 'MEDIUM'}
               </ThemedText>
             </ThemedView>
+            {item.dueDate && (
+              <ThemedView style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, backgroundColor: 'transparent' }}>
+                <Ionicons 
+                  name="time-outline" 
+                  size={12} 
+                  color={!isCompleted && new Date(item.dueDate) < new Date() ? '#ef4444' : theme.textSecondary} 
+                  style={{ marginRight: 4 }} 
+                />
+                <ThemedText 
+                  type="small" 
+                  style={{ 
+                    fontSize: 10, 
+                    color: !isCompleted && new Date(item.dueDate) < new Date() ? '#ef4444' : theme.textSecondary 
+                  }}
+                >
+                  {new Date(item.dueDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                </ThemedText>
+              </ThemedView>
+            )}
           </ThemedView>
           
           <Pressable onPress={() => handleOpenOptions(item)} style={styles.deleteButton} hitSlop={10}>
@@ -374,6 +455,8 @@ export default function HomeScreen() {
             setNewTaskTitle('');
             setNewTaskDescription('');
             setNewTaskPriority('medium');
+            setNewTaskDueDate(null);
+            setShowDatePicker(false);
           }}
         >
           <ThemedView style={styles.modalOverlay}>
@@ -427,6 +510,46 @@ export default function HomeScreen() {
                 </ThemedView>
               </ThemedView>
 
+              <ThemedView style={{ marginBottom: Spacing.four, backgroundColor: 'transparent' }}>
+                <ThemedText type="smallBold" style={{ marginBottom: Spacing.two }}>Due Date</ThemedText>
+                {Platform.OS === 'web' ? (
+                  <input 
+                    type="datetime-local" 
+                    value={newTaskDueDate ? new Date(newTaskDueDate.getTime() - newTaskDueDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
+                    onChange={(e) => setNewTaskDueDate(e.target.value ? new Date(e.target.value) : null)}
+                    style={{ padding: 8, borderRadius: 8, border: '1px solid #ccc', backgroundColor: theme.backgroundElement, color: theme.text }}
+                  />
+                ) : (
+                  <ThemedView style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'transparent' }}>
+                    <Pressable 
+                      onPress={() => setShowDatePicker(true)}
+                      style={[styles.modalInput, { flex: 1, marginBottom: 0, justifyContent: 'center' }]}
+                    >
+                      <ThemedText style={{ color: newTaskDueDate ? theme.text : theme.textSecondary }}>
+                        {newTaskDueDate ? newTaskDueDate.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Select Due Date...'}
+                      </ThemedText>
+                    </Pressable>
+                    {newTaskDueDate && (
+                      <Pressable onPress={() => setNewTaskDueDate(null)} style={{ padding: Spacing.two }}>
+                        <Ionicons name="close-circle" size={24} color={theme.textSecondary} />
+                      </Pressable>
+                    )}
+                  </ThemedView>
+                )}
+                {showDatePicker && Platform.OS !== 'web' && (
+                  <DateTimePicker
+                    value={newTaskDueDate || new Date()}
+                    mode={Platform.OS === 'ios' ? 'datetime' : 'date'}
+                    display="default"
+                    onChange={(event, date) => {
+                      setShowDatePicker(Platform.OS === 'ios');
+                      if (date) setNewTaskDueDate(date);
+                    }}
+                  />
+                )}
+              </ThemedView>
+
+
               <ThemedView style={styles.modalButtons}>
                 <Pressable
                   onPress={() => {
@@ -435,6 +558,8 @@ export default function HomeScreen() {
                     setNewTaskTitle('');
                     setNewTaskDescription('');
                     setNewTaskPriority('medium');
+                    setNewTaskDueDate(null);
+                    setShowDatePicker(false);
                   }}
                   style={[styles.modalButton, { borderColor: theme.backgroundSelected }]}
                 >

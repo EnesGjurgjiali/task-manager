@@ -11,6 +11,7 @@ const createTaskSchema = z.object({
   description: z.string().optional().default(''),
   status: z.enum(['completed', 'pending']).optional().default('pending'),
   priority: z.enum(['low', 'medium', 'high']).optional().default('medium'),
+  dueDate: z.string().optional().nullable(),
 });
 
 const updateTaskSchema = z.object({
@@ -18,6 +19,7 @@ const updateTaskSchema = z.object({
   description: z.string().optional(),
   status: z.enum(['completed', 'pending']).optional(),
   priority: z.enum(['low', 'medium', 'high']).optional(),
+  dueDate: z.string().optional().nullable(),
 });
 
 const reorderSchema = z.array(
@@ -66,7 +68,7 @@ router.post('/', async (req: AuthRequest, res: Response, next: NextFunction): Pr
       return;
     }
 
-    const { title, description, status, priority } = parseResult.data;
+    const { title, description, status, priority, dueDate } = parseResult.data;
 
     const maxOrderTask = await Task.findOne({ userId: req.userId }).sort('-order');
     const order = maxOrderTask ? maxOrderTask.order + 1 : 0;
@@ -76,6 +78,7 @@ router.post('/', async (req: AuthRequest, res: Response, next: NextFunction): Pr
       description,
       status,
       priority,
+      dueDate: dueDate ? new Date(dueDate) : undefined,
       order,
       userId: req.userId,
     });
@@ -122,11 +125,18 @@ router.put('/:id', async (req: AuthRequest, res: Response, next: NextFunction): 
     }
 
     const { id } = req.params;
-    const updateData = parseResult.data;
+    const { dueDate, ...otherUpdates } = parseResult.data;
+
+    const updateQuery: any = { $set: otherUpdates };
+    if (dueDate) {
+      updateQuery.$set.dueDate = new Date(dueDate);
+    } else if (dueDate === null) {
+      updateQuery.$unset = { dueDate: 1 };
+    }
 
     const task = await Task.findOneAndUpdate(
       { _id: id, userId: req.userId },
-      { $set: updateData },
+      updateQuery,
       { new: true, runValidators: true }
     );
 

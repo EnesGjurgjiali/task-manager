@@ -1,5 +1,9 @@
 # Task Manager App
 
+🚀 **[Download the Android APK Here](https://expo.dev/artifacts/eas/dp_TuAKfmqR4C7hKG4QRN57E-PpMIIfZJQAgnXjwJ2Q.apk)** 🚀
+
+> ⚠️ **Note on Performance:** The backend is deployed on Render's free tier. If the app hasn't been used in couple of hours, the server spins down to sleep. The very first request (like signing in or loading tasks) may take **up to 1 minute** to wake the server back up. Subsequent requests will be lightning fast!
+
 A full-stack, universal Task Manager application built with **React Native (Expo)**, **React Query**, and an **Express.js / MongoDB** backend.
 
 ## 📝 Short Explanation of Implementation

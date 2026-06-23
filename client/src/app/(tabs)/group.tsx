@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, TextInput, Pressable, ActivityIndicator, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -99,8 +98,7 @@ export default function GroupScreen() {
   };
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemedView style={styles.container}>
+    <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           
           <ThemedView style={styles.header}>
@@ -210,8 +208,7 @@ export default function GroupScreen() {
           }}
           onDelete={(id) => handleDeleteTask(id)}
         />
-      </ThemedView>
-    </GestureHandlerRootView>
+    </ThemedView>
   );
 }
 

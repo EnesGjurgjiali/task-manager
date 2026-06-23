@@ -15,6 +15,7 @@ This project was built to deliver a robust and highly responsive task management
 
 ## ✨ Features
 - **User Authentication**: Secure JWT-based auth and Google OAuth integration.
+  > ⚠️ **Note on Google OAuth:** Google Sign-In will only function in the compiled Production APK or Web Browser. It will not work inside the Expo Go mobile app during development because Google Cloud Console security policies block the `exp://` development redirect URIs.
 - **Task Management**: Create, view, complete, and delete tasks.
 - **Search & Filter**: Real-time client/server filtering of tasks by status (Pending/Completed) and search terms.
 - **Offline Mode**: Automatically caches tasks locally. If the network drops, tasks are loaded from `AsyncStorage`.

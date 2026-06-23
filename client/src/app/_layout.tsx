@@ -1,3 +1,5 @@
+import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { useColorScheme, ActivityIndicator, StyleSheet, LogBox } from 'react-native';
 
@@ -61,15 +63,17 @@ function ExpoThemeProvider({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   return (
-    <CustomThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ExpoThemeProvider>
-            <AppContent />
-          </ExpoThemeProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </CustomThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <CustomThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <ExpoThemeProvider>
+              <AppContent />
+            </ExpoThemeProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </CustomThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 

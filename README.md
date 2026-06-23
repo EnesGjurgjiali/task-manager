@@ -1,6 +1,6 @@
 # Task Manager App
 
-🚀 **[Download the Android APK Here](https://expo.dev/artifacts/eas/dp_TuAKfmqR4C7hKG4QRN57E-PpMIIfZJQAgnXjwJ2Q.apk)** 🚀
+🚀 **[Download the Android APK Here](https://expo.dev/artifacts/eas/R4AM87lVaRd4VAvmOSd98bJRSu8Bdt9Ruba7zIWjiIU.apk)** 🚀
 
 > ⚠️ **Note on Performance:** The backend is deployed on Render's free tier. If the app hasn't been used in couple of hours, the server spins down to sleep. The very first request (like signing in or loading tasks) may take **up to 1 minute** to wake the server back up. Subsequent requests will be lightning fast!
 
@@ -87,3 +87,37 @@ This project was built to deliver a robust and highly responsive task management
 
 ---
 
+## 📸 App Showcase
+
+<table style="width:100%; border-collapse: collapse;">
+  <tr>
+    <td align="center"><b>Sign In / Register</b></td>
+    <td align="center"><b>Home Dashboard</b></td>
+    <td align="center"><b>Profile / Stats</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="client/assets/images/app/signIn.jpg" width="250"/></td>
+    <td align="center"><img src="client/assets/images/app/home.jpg" width="250"/></td>
+    <td align="center"><img src="client/assets/images/app/profile.jpg" width="250"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Personal Tasks</b></td>
+    <td align="center"><b>Task Options</b></td>
+    <td align="center"><b>Edit Task</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="client/assets/images/app/dashboard.jpg" width="250"/></td>
+    <td align="center"><img src="client/assets/images/app/taskOptionsModal.jpg" width="250"/></td>
+    <td align="center"><img src="client/assets/images/app/editTaskModal.jpg" width="250"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Collaborative Groups</b></td>
+    <td align="center"><b>Assign Users</b></td>
+    <td align="center"><b>Edit Group Task</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="client/assets/images/app/groupTask.jpg" width="250"/></td>
+    <td align="center"><img src="client/assets/images/app/assignUsersToTasks.jpg" width="250"/></td>
+    <td align="center"><img src="client/assets/images/app/editGroupTask.jpg" width="250"/></td>
+  </tr>
+</table>

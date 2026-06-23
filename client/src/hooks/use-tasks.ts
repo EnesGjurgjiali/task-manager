@@ -13,17 +13,17 @@ try {
   // Silent ignore
 }
 
-export function useTasks(filter: string, search: string) {
+export function useTasks(filter: string, search: string, type: 'personal' | 'group' = 'personal') {
   const queryClient = useQueryClient();
 
   // Load tasks
   const tasksQuery = useQuery<Task[]>({
-    queryKey: ['tasks', filter, search],
+    queryKey: ['tasks', filter, search, type],
     queryFn: async () => {
       try {
         const statusParam = filter !== 'all' ? `&status=${filter}` : '';
         const searchParam = search ? `&search=${encodeURIComponent(search)}` : '';
-        const response = await api.get(`/tasks?${statusParam}${searchParam}`);
+        const response = await api.get(`/tasks?type=${type}${statusParam}${searchParam}`);
         
         if (filter === 'all' && !search) {
           await storage.setItem(OFFLINE_TASKS_CACHE_KEY, JSON.stringify(response.data));
@@ -67,7 +67,7 @@ export function useTasks(filter: string, search: string) {
   };
 
   const createTaskMutation = useMutation({
-    mutationFn: async (payload: { title: string; description: string; priority: string; dueDate?: string | null }) => {
+    mutationFn: async (payload: { title: string; description: string; priority: string; dueDate?: string | null; isGroupTask?: boolean; assignedUsers?: any[] }) => {
       const response = await api.post('/tasks', payload);
       return response.data;
     },

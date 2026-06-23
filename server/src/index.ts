@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import taskRoutes from './routes/tasks';
+import userRoutes from './routes/users';
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check endpoint
 app.get('/health', (_req: Request, res: Response) => {
@@ -42,8 +44,8 @@ mongoose
   .connect(MONGODB_URI)
   .then(() => {
     console.log('Connected to MongoDB database successfully.');
-    app.listen(PORT, () => {
-      console.log(`Server is running locally on http://localhost:${PORT}`);
+    app.listen(PORT as number, '0.0.0.0', () => {
+      console.log(`Server is running locally on http://0.0.0.0:${PORT}`);
     });
   })
   .catch((error) => {

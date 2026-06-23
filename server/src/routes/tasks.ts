@@ -12,6 +12,11 @@ const createTaskSchema = z.object({
   status: z.enum(['completed', 'pending']).optional().default('pending'),
   priority: z.enum(['low', 'medium', 'high']).optional().default('medium'),
   dueDate: z.string().optional().nullable(),
+  isGroupTask: z.boolean().optional().default(false),
+  assignedUsers: z.array(z.object({
+    user: z.string(),
+    role: z.enum(['viewer', 'editor'])
+  })).optional().default([]),
 });
 
 const updateTaskSchema = z.object({
@@ -20,6 +25,11 @@ const updateTaskSchema = z.object({
   status: z.enum(['completed', 'pending']).optional(),
   priority: z.enum(['low', 'medium', 'high']).optional(),
   dueDate: z.string().optional().nullable(),
+  isGroupTask: z.boolean().optional(),
+  assignedUsers: z.array(z.object({
+    user: z.string(),
+    role: z.enum(['viewer', 'editor'])
+  })).optional(),
 });
 
 const reorderSchema = z.array(
@@ -32,17 +42,26 @@ const reorderSchema = z.array(
 // All task routes are authenticated
 router.use(authenticateToken);
 
-interface TaskQuery {
-  userId?: string;
-  status?: 'completed' | 'pending';
-  title?: { $regex: string; $options: string };
-}
-
 // 1. GET /api/tasks - Retrieve user's tasks with search and status filtering
 router.get('/', async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { search, status } = req.query;
-    const query: TaskQuery = { userId: req.userId };
+    const { search, status, type } = req.query;
+    
+    // Base query handles permissions
+    let query: any = {};
+    
+    if (type === 'group') {
+      // Group tasks: where isGroupTask is true AND user is either creator or assigned
+      query.isGroupTask = true;
+      query.$or = [
+        { userId: req.userId },
+        { 'assignedUsers.user': req.userId }
+      ];
+    } else {
+      // Personal tasks: where isGroupTask is not true AND user is creator
+      query.isGroupTask = { $ne: true };
+      query.userId = req.userId;
+    }
 
     if (status && (status === 'completed' || status === 'pending')) {
       query.status = status;
@@ -52,7 +71,10 @@ router.get('/', async (req: AuthRequest, res: Response, next: NextFunction): Pro
       query.title = { $regex: search.trim(), $options: 'i' };
     }
 
-    const tasks = await Task.find(query).sort({ order: 1, createdDate: -1 });
+    const tasks = await Task.find(query)
+      .sort({ order: 1, createdDate: -1 })
+      .populate('assignedUsers.user', 'name email _id'); // Populate user data for group tasks
+      
     res.status(200).json(tasks);
   } catch (error) {
     next(error);
@@ -68,9 +90,9 @@ router.post('/', async (req: AuthRequest, res: Response, next: NextFunction): Pr
       return;
     }
 
-    const { title, description, status, priority, dueDate } = parseResult.data;
+    const { title, description, status, priority, dueDate, isGroupTask, assignedUsers } = parseResult.data;
 
-    const maxOrderTask = await Task.findOne({ userId: req.userId }).sort('-order');
+    const maxOrderTask = await Task.findOne({ userId: req.userId, isGroupTask }).sort('-order');
     const order = maxOrderTask ? maxOrderTask.order + 1 : 0;
 
     const newTask = await Task.create({
@@ -82,13 +104,30 @@ router.post('/', async (req: AuthRequest, res: Response, next: NextFunction): Pr
       completedDate: status === 'completed' ? new Date() : undefined,
       order,
       userId: req.userId,
+      isGroupTask,
+      assignedUsers
     });
+
+    // Populate user details before returning
+    await newTask.populate('assignedUsers.user', 'name email _id');
 
     res.status(201).json(newTask);
   } catch (error) {
     next(error);
   }
 });
+
+// Helper to check edit/delete permissions
+const checkTaskPermission = (task: any, userId: string): boolean => {
+  if (task.userId.toString() === userId) return true; // Creator has full access
+  if (!task.isGroupTask) return false; // Not a group task, only creator
+  
+  // Check if assigned as editor
+  const assigned = task.assignedUsers.find((au: any) => au.user.toString() === userId);
+  if (assigned && assigned.role === 'editor') return true;
+  
+  return false;
+}
 
 // 3. PUT /api/tasks/reorder - Bulk reorder tasks
 router.put('/reorder', async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -99,9 +138,11 @@ router.put('/reorder', async (req: AuthRequest, res: Response, next: NextFunctio
       return;
     }
 
+    // Only allow reordering tasks user has permission for
+    // For simplicity, we just filter by userId for now since bulk permission check is complex
     const updates = parseResult.data.map(item => ({
       updateOne: {
-        filter: { _id: item.id, userId: req.userId },
+        filter: { _id: item.id, userId: req.userId }, // Currently limits reorder to creator
         update: { $set: { order: item.order } }
       }
     }));
@@ -126,6 +167,25 @@ router.put('/:id', async (req: AuthRequest, res: Response, next: NextFunction): 
     }
 
     const { id } = req.params;
+    
+    // First fetch the task to check permissions
+    const task = await Task.findById(id);
+    if (!task) {
+      res.status(404).json({ error: 'Task not found.' });
+      return;
+    }
+    
+    if (!checkTaskPermission(task, req.userId as string)) {
+      // Check if they are a viewer who is ONLY trying to update status
+      const isViewer = task.assignedUsers.some((au: any) => au.user.toString() === req.userId && au.role === 'viewer');
+      const onlyUpdatingStatus = Object.keys(parseResult.data).length === 1 && parseResult.data.status !== undefined;
+      
+      if (!(isViewer && onlyUpdatingStatus)) {
+        res.status(403).json({ error: 'You do not have permission to edit this task.' });
+        return;
+      }
+    }
+
     const { dueDate, ...otherUpdates } = parseResult.data;
 
     const updateQuery: any = { $set: otherUpdates };
@@ -142,18 +202,13 @@ router.put('/:id', async (req: AuthRequest, res: Response, next: NextFunction): 
       updateQuery.$unset.completedDate = 1;
     }
 
-    const task = await Task.findOneAndUpdate(
-      { _id: id, userId: req.userId },
+    const updatedTask = await Task.findByIdAndUpdate(
+      id,
       updateQuery,
       { new: true, runValidators: true }
-    );
+    ).populate('assignedUsers.user', 'name email _id');
 
-    if (!task) {
-      res.status(404).json({ error: 'Task not found.' });
-      return;
-    }
-
-    res.status(200).json(task);
+    res.status(200).json(updatedTask);
   } catch (error) {
     next(error);
   }
@@ -164,12 +219,18 @@ router.delete('/:id', async (req: AuthRequest, res: Response, next: NextFunction
   try {
     const { id } = req.params;
 
-    const result = await Task.findOneAndDelete({ _id: id, userId: req.userId });
-
-    if (!result) {
+    const task = await Task.findById(id);
+    if (!task) {
       res.status(404).json({ error: 'Task not found.' });
       return;
     }
+
+    if (!checkTaskPermission(task, req.userId as string)) {
+      res.status(403).json({ error: 'You do not have permission to delete this task.' });
+      return;
+    }
+
+    await Task.findByIdAndDelete(id);
 
     res.status(200).json({ message: 'Task deleted successfully.' });
   } catch (error) {

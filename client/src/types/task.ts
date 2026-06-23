@@ -8,4 +8,9 @@ export interface Task {
   createdDate: string;
   dueDate?: string;
   completedDate?: string;
+  isGroupTask?: boolean;
+  assignedUsers?: Array<{
+    user: { _id: string; name: string; email: string };
+    role: 'viewer' | 'editor';
+  }>;
 }

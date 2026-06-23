@@ -10,6 +10,11 @@ export interface ITask extends Document {
   dueDate?: Date;
   completedDate?: Date;
   userId: Types.ObjectId;
+  isGroupTask: boolean;
+  assignedUsers: Array<{
+    user: Types.ObjectId;
+    role: 'viewer' | 'editor';
+  }>;
 }
 
 const TaskSchema = new Schema<ITask>({
@@ -55,6 +60,22 @@ const TaskSchema = new Schema<ITask>({
     ref: 'User',
     required: true,
   },
+  isGroupTask: {
+    type: Boolean,
+    default: false,
+  },
+  assignedUsers: [{
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    role: {
+      type: String,
+      enum: ['viewer', 'editor'],
+      default: 'viewer',
+    }
+  }],
 });
 
 export const Task = model<ITask>('Task', TaskSchema);

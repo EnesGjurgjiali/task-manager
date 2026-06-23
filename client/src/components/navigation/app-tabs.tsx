@@ -29,7 +29,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="analytics">
         <NativeTabs.Trigger.Label>Analytics</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')} // We can fallback to an existing icon or use ionic if possible.
+          src={require('@/assets/images/tabIcons/analytics.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>

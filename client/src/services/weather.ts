@@ -33,7 +33,7 @@ export const fetchWeather = async (latitude: number = 42.6629, longitude: number
 // Map weather codes to descriptive labels
 export const getWeatherCondition = (code: number): string => {
   if (code === 0) return 'Clear sky';
-  if (code >= 1 && code <= 3) return 'Mainly clear, partly cloudy, or overcast';
+  if (code >= 1 && code <= 3) return 'Partly cloudy';
   if (code === 45 || code === 48) return 'Foggy';
   if (code >= 51 && code <= 55) return 'Drizzle';
   if (code >= 61 && code <= 65) return 'Rainy';

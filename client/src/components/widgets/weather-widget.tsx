@@ -72,12 +72,12 @@ export function WeatherWidget({ weather, loading }: WeatherWidgetProps) {
     >
       <View style={styles.content}>
         <View style={styles.leftSide}>
-          <Ionicons name={theme.icon} size={40} color={textColor} />
+          <Ionicons name={theme.icon} size={32} color={textColor} />
           <View style={styles.textContainer}>
             <ThemedText type="smallBold" style={{ color: textColor, opacity: 0.9, marginBottom: 2 }}>
               Prishtina
             </ThemedText>
-            <ThemedText type="subtitle" style={{ color: textColor }}>
+            <ThemedText type="default" style={{ color: textColor, fontWeight: '600' }} numberOfLines={1} ellipsizeMode="tail">
               {getWeatherCondition(weather.weathercode)}
             </ThemedText>
             <ThemedText type="small" style={{ color: textColor, opacity: 0.8 }}>
@@ -97,12 +97,12 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: Spacing.four,
     overflow: 'hidden',
-    padding: Spacing.five,
+    padding: Spacing.four,
     marginBottom: Spacing.three,
   },
   loadingContainer: {
     borderRadius: Spacing.four,
-    padding: Spacing.five,
+    padding: Spacing.four,
     marginBottom: Spacing.three,
     borderWidth: 1,
     borderColor: '#374151',
@@ -124,8 +124,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   temp: {
-    fontSize: 48,
-    lineHeight: 56,
+    fontSize: 36,
+    lineHeight: 42,
     fontWeight: 'bold',
   },
 });

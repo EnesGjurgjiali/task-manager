@@ -48,16 +48,28 @@ function AppContent() {
   );
 }
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+import { ThemeProvider as CustomThemeProvider, useThemeContext } from '@/context/ThemeContext';
+
+function ExpoThemeProvider({ children }: { children: React.ReactNode }) {
+  const { activeTheme } = useThemeContext();
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <AppContent />
-        </ThemeProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ThemeProvider value={activeTheme === 'dark' ? DarkTheme : DefaultTheme}>
+      {children}
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <CustomThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ExpoThemeProvider>
+            <AppContent />
+          </ExpoThemeProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </CustomThemeProvider>
   );
 }
 

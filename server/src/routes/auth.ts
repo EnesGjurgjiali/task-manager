@@ -24,6 +24,11 @@ const googleAuthSchema = z.object({
   idToken: z.string().min(1, 'Google ID Token is required'),
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(6, 'New password must be at least 6 characters'),
+});
+
 interface GoogleTokenInfo {
   email?: string;
   name?: string;
@@ -226,6 +231,46 @@ router.post('/google', async (req: Request, res: Response, next: NextFunction): 
         createdAt: user.createdAt,
       },
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 4. POST /api/auth/change-password
+import { authenticateToken, AuthRequest } from '../middleware/auth';
+
+router.post('/change-password', authenticateToken, async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const parseResult = changePasswordSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      res.status(400).json({ error: parseResult.error.issues[0].message });
+      return;
+    }
+
+    const { currentPassword, newPassword } = parseResult.data;
+
+    const user = await User.findById(req.userId);
+    if (!user) {
+      res.status(404).json({ error: 'User not found.' });
+      return;
+    }
+
+    if (!user.password) {
+      res.status(400).json({ error: 'This account uses a third-party login.' });
+      return;
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      res.status(401).json({ error: 'Incorrect current password.' });
+      return;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.status(200).json({ message: 'Password updated successfully.' });
   } catch (error) {
     next(error);
   }

@@ -7,6 +7,13 @@ const TOKEN_KEY = 'auth_token';
 
 // Detect environment to support Web, iOS Simulators, Android Emulators, and Physical Devices
 const getBaseURL = () => {
+  // If the app is compiled for production (APK/AAB/IPA), use the environment variable
+  if (!__DEV__) {
+    // Fallback to the known render URL just in case the env var wasn't injected during build
+    return process.env.EXPO_PUBLIC_API_URL || 'https://task-manager-yzh3.onrender.com/api';
+  }
+
+  // If a developer explicitly wants to test against a live URL locally, they can use this
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }

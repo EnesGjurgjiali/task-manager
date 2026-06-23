@@ -1,11 +1,11 @@
-import express, { Request, Response } from 'express';
+import express, { Response } from 'express';
 import { User } from '../models/User';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
 
 // Get all users (for inviting to tasks)
-router.get('/', authenticateToken, async (req: any, res: any) => {
+router.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     // Return all users except the currently logged in user
     // Only return name, email, and _id (exclude password and other sensitive fields)

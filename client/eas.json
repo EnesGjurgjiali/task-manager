@@ -10,6 +10,11 @@
     "preview": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "626762616759-v5q1eojiadg68m7sbgrqadt11j3p923t.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "626762616759-o24ggbcoi0u8dj0st07ttjr82d041kf2.apps.googleusercontent.com",
+        "EXPO_PUBLIC_API_URL": "https://task-manager-yzh3.onrender.com/api"
       }
     },
     "production": {}

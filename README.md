@@ -1,6 +1,6 @@
 # Task Manager App
 
-🚀 **[Download the Android APK Here](https://expo.dev/artifacts/eas/R4AM87lVaRd4VAvmOSd98bJRSu8Bdt9Ruba7zIWjiIU.apk)** 🚀
+ **[Download the Android APK Here](https://expo.dev/artifacts/eas/j0rGEBvGV9DJAX8SD0JbGvHe_kOAsrI4coaDpdrC10g.apk)** 
 
 > ⚠️ **Note on Performance:** The backend is deployed on Render's free tier. If the app hasn't been used in couple of hours, the server spins down to sleep. The very first request (like signing in or loading tasks) may take **up to 1 minute** to wake the server back up. Subsequent requests will be lightning fast!
 

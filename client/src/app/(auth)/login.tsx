@@ -27,8 +27,10 @@ export default function LoginScreen() {
   // Google OAuth configuration
   const isExpoGo = Constants.appOwnership === 'expo';
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '8f5b207-dev-dummy-id',
-    androidClientId: isExpoGo ? process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID : process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'dummy-web-client-id',
+    androidClientId: isExpoGo 
+      ? (process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'dummy-web-client-id') 
+      : (process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || 'dummy-android-client-id'),
     redirectUri: isExpoGo ? AuthSession.makeRedirectUri() : undefined,
   });
 

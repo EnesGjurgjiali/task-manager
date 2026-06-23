@@ -7,4 +7,5 @@ export interface Task {
   order: number;
   createdDate: string;
   dueDate?: string;
+  completedDate?: string;
 }

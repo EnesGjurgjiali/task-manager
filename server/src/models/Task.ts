@@ -8,6 +8,7 @@ export interface ITask extends Document {
   order: number;
   createdDate: Date;
   dueDate?: Date;
+  completedDate?: Date;
   userId: Types.ObjectId;
 }
 
@@ -44,6 +45,9 @@ const TaskSchema = new Schema<ITask>({
     required: true,
   },
   dueDate: {
+    type: Date,
+  },
+  completedDate: {
     type: Date,
   },
   userId: {

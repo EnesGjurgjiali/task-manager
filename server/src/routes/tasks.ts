@@ -79,6 +79,7 @@ router.post('/', async (req: AuthRequest, res: Response, next: NextFunction): Pr
       status,
       priority,
       dueDate: dueDate ? new Date(dueDate) : undefined,
+      completedDate: status === 'completed' ? new Date() : undefined,
       order,
       userId: req.userId,
     });
@@ -132,6 +133,13 @@ router.put('/:id', async (req: AuthRequest, res: Response, next: NextFunction): 
       updateQuery.$set.dueDate = new Date(dueDate);
     } else if (dueDate === null) {
       updateQuery.$unset = { dueDate: 1 };
+    }
+
+    if (otherUpdates.status === 'completed') {
+      updateQuery.$set.completedDate = new Date();
+    } else if (otherUpdates.status === 'pending') {
+      updateQuery.$unset = updateQuery.$unset || {};
+      updateQuery.$unset.completedDate = 1;
     }
 
     const task = await Task.findOneAndUpdate(
